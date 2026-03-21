@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Drop Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --bg:#0a0a0a; --s1:#141414; --s2:#1e1e1e; --s3:#282828;
+  --border:#2a2a2a; --accent:#ff9900; --accent2:#e67e00;
+  --green:#27ae60; --red:#c0392b; --blue:#2980b9;
+  --text:#f0f0f0; --muted:#666; --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:80px}
+
+/* HEADER */
+.app-header{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.app-logo{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800}
+.app-logo span{color:var(--accent)}
+.rf-counter{background:var(--s3);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:0.72rem;color:var(--muted)}
+.rf-counter strong{color:var(--accent)}
+
+/* TABS */
+.tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:99}
+.tab{flex:1;padding:13px;text-align:center;font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:0.5px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* PAGES */
+.page{display:none;padding:16px}
+.page.active{display:block}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.card-label{font-family:'Syne',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+
+/* BUTTONS */
+.btn{border:none;border-radius:10px;padding:13px 16px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.88rem;transition:opacity 0.15s,transform 0.1s;width:100%}
+.btn:active{transform:scale(0.98);opacity:0.85}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-orange{background:var(--accent);color:#000}
+.btn-green{background:var(--green);color:#fff}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-ghost{background:var(--s3);border:1px solid var(--border);color:var(--text)}
+.btn-red{background:var(--red);color:#fff}
+.btn-sm{padding:8px 12px;font-size:0.78rem;width:auto}
+
+/* INPUTS */
+.input-row{display:flex;gap:8px;margin-bottom:10px}
+.input-row input{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:13px;color:var(--text);font-size:0.95rem;font-family:'DM Sans',sans-serif;outline:none}
+.input-row input:focus{border-color:var(--accent)}
+.input-row input::placeholder{color:var(--muted)}
+.btn-x{background:var(--red);border:none;border-radius:10px;color:#fff;font-size:1.2rem;width:48px;height:48px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+
+/* LOADING */
+.spinner-wrap{text-align:center;padding:40px 0}
+.spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner-wrap p{color:var(--muted);font-size:0.85rem}
+
+/* ERROR */
+.error-box{background:#1a0d0d;border:1px solid #4a1515;border-radius:var(--radius);padding:12px;color:#ff7070;font-size:0.85rem;margin-bottom:12px;line-height:1.5;display:none}
+
+/* EBAY PRODUCTS LIST */
+.ebay-list{display:flex;flex-direction:column;gap:10px}
+.ebay-item{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:border-color 0.2s}
+.ebay-item:active{border-color:var(--accent)}
+.ebay-thumb{width:70px;height:70px;border-radius:8px;object-fit:contain;background:var(--s2);flex-shrink:0}
+.ebay-info{flex:1;min-width:0}
+.ebay-title{font-size:0.82rem;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ebay-price{font-family:'Syne',sans-serif;font-weight:700;color:var(--accent);font-size:0.95rem}
+.ebay-copy-btn{background:var(--s3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:0.72rem;padding:5px 10px;cursor:pointer;white-space:nowrap;margin-top:6px;font-family:'DM Sans',sans-serif}
+.ebay-copy-btn.done{background:#0d2e0d;color:#4caf50;border-color:#2e7d2e}
+
+/* AMAZON RESULTS */
+.amz-results{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.amz-item{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:border-color 0.2s}
+.amz-item:active{border-color:var(--accent)}
+.amz-thumb{width:60px;height:60px;border-radius:8px;object-fit:contain;background:var(--s2);flex-shrink:0}
+.amz-info{flex:1;min-width:0}
+.amz-title{font-size:0.8rem;line-height:1.35;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.amz-asin{font-family:monospace;font-size:0.72rem;color:var(--muted)}
+.amz-price{font-family:'Syne',sans-serif;font-weight:700;color:var(--green);font-size:0.88rem}
+.use-btn{background:var(--accent);border:none;border-radius:7px;color:#000;font-size:0.72rem;font-weight:700;padding:6px 12px;cursor:pointer;white-space:nowrap;font-family:'Syne',sans-serif}
+
+/* PRODUCT DETAIL */
+#prodDetail{display:none}
+.prod-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;line-height:1.4;margin-bottom:10px}
+.price-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.price-amazon{background:var(--green);color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;padding:4px 12px;border-radius:8px}
+.price-label{color:var(--muted);font-size:0.78rem}
+.asin-badge{background:var(--s2);border:1px solid var(--border);color:var(--muted);font-size:0.75rem;padding:4px 10px;border-radius:6px;font-family:monospace}
+.amazon-link{display:inline-flex;align-items:center;gap:4px;color:#7eb8ff;font-size:0.8rem;text-decoration:none;border:1px solid #1a3a5e;background:#0a1e2e;padding:6px 12px;border-radius:8px;margin-top:8px}
+
+/* IMAGES */
+.img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.img-wrap{position:relative;background:var(--s2);border-radius:10px;border:1px solid var(--border);aspect-ratio:1;overflow:hidden;cursor:pointer}
+.img-wrap img{width:100%;height:100%;object-fit:contain;padding:6px;pointer-events:none}
+.img-n{position:absolute;top:5px;left:7px;background:rgba(0,0,0,0.65);color:#fff;font-size:0.65rem;padding:2px 6px;border-radius:4px;pointer-events:none}
+.img-tap{position:absolute;bottom:0;left:0;right:0;background:rgba(255,153,0,0.9);color:#000;font-family:'Syne',sans-serif;font-weight:700;font-size:0.68rem;padding:6px;text-align:center;pointer-events:none}
+
+/* VIEWER */
+#viewer{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:999;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+#viewer.open{display:flex}
+#viewer img{max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px}
+#viewer-info{color:#fff;font-size:0.82rem;margin-top:10px;opacity:0.7}
+#viewer-hint{color:var(--accent);font-size:0.78rem;margin-top:4px;text-align:center;font-weight:700}
+#viewer-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:0.9rem;padding:8px 14px;border-radius:8px;cursor:pointer}
+#viewer-nav{display:flex;gap:12px;margin-top:14px}
+#viewer-nav button{background:var(--s1);border:1px solid var(--border);color:#fff;padding:11px 22px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer}
+
+/* EBAY TEXT */
+.ebay-text-box{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:0.85rem;line-height:1.7;white-space:pre-line;color:#ddd;margin-bottom:10px;min-height:100px}
+.ebay-title-box{background:#0a1e0a;border:1px solid #1e5e1e;border-radius:10px;padding:12px;font-size:0.9rem;line-height:1.5;color:#c8e6a0;margin-bottom:6px;font-weight:600}
+.char-count{font-size:0.72rem;color:var(--muted);text-align:right;margin-bottom:10px}
+.desc-box{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:0.85rem;line-height:1.7;white-space:pre-line;color:#ccc;margin-bottom:10px}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:14px 0}
+
+/* BACK BTN */
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:0.82rem;cursor:pointer;margin-bottom:14px;background:none;border:none;padding:0}
+.back-btn:active{color:var(--text)}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-logo">Drop<span>Tool</span></div>
+  <div class="rf-counter">Ricerche: <strong id="rfCount">0</strong>/100</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('ebay')">📦 eBay Spia</div>
+  <div class="tab" onclick="switchTab('amazon')">🔍 Amazon</div>
+</div>
+
+<!-- ===== TAB EBAY ===== -->
+<div class="page active" id="page-ebay">
+
+  <div class="card">
+    <div class="card-label">👁️ Prodotti venduti — carugno-shop</div>
+    <button class="btn btn-orange" id="btnAggiorna" onclick="caricaEbay()">
+      🔄 Aggiorna prodotti venduti
+    </button>
+  </div>
+
+  <div class="error-box" id="errEbay"></div>
+  <div id="loadEbay" style="display:none" class="spinner-wrap"><div class="spinner"></div><p>Carico prodotti eBay…</p></div>
+  <div class="ebay-list" id="ebayList"></div>
+  <div id="ebayEmpty" style="display:none;text-align:center;padding:40px 16px;color:var(--muted);font-size:0.88rem">
+    Clicca "Aggiorna" per vedere i prodotti venduti
+  </div>
+
+</div>
+
+<!-- ===== TAB AMAZON ===== -->
+<div class="page" id="page-amazon">
+
+  <div class="card">
+    <div class="card-label">🔍 Cerca su Amazon</div>
+    <div class="input-row">
+      <input type="text" id="amzQuery" placeholder="ASIN o link Amazon..." />
+      <button class="btn-x" onclick="document.getElementById('amzQuery').value='';document.getElementById('amzQuery').focus()">✕</button>
+    </div>
+    <button class="btn btn-orange" id="btnAmzSearch" onclick="cercaAmazon()">🔎 Cerca</button>
+  </div>
+
+  <div class="error-box" id="errAmz"></div>
+  <div id="loadAmz" style="display:none" class="spinner-wrap"><div class="spinner"></div><p id="loadAmzMsg">Ricerca in corso…</p></div>
+
+  <!-- Lista risultati ricerca -->
+  <div id="amzResultsList" style="display:none">
+    <div class="card-label" style="margin-bottom:10px">Scegli il prodotto giusto:</div>
+    <div class="amz-results" id="amzResults"></div>
+  </div>
+
+  <!-- Dettaglio prodotto -->
+  <div id="prodDetail" style="display:none">
+
+    <button class="back-btn" onclick="tornaRisultati()">← Torna ai risultati</button>
+
+    <!-- Info prodotto -->
+    <div class="card">
+      <div class="card-label">📦 Prodotto Amazon</div>
+      <div class="prod-title" id="pdTitle"></div>
+      <div class="price-row">
+        <span class="price-amazon" id="pdPrice"></span>
+        <span class="price-label">prezzo Amazon</span>
+      </div>
+      <div class="asin-badge" id="pdAsin"></div>
+      <a class="amazon-link" id="pdLink" href="#" target="_blank">🔗 Apri su Amazon</a>
+    </div>
+
+    <!-- Immagini -->
+    <div class="card">
+      <div class="card-label">🖼️ Immagini <span id="pdImgCount" style="color:var(--muted);font-size:0.72rem;font-weight:400;text-transform:none;letter-spacing:0"></span></div>
+      <div class="img-grid" id="pdImgGrid"></div>
+      <div id="pdNoImg" style="display:none;color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center">Nessuna immagine trovata</div>
+      <div style="height:10px"></div>
+      <button class="btn btn-green" id="btnZip" onclick="scaricaZip()" style="display:none">📦 Scarica tutte le foto (ZIP)</button>
+    </div>
+
+    <!-- Titolo eBay -->
+    <div class="card">
+      <div class="card-label">🏷️ Titolo per eBay (max 80 caratteri)</div>
+      <div class="ebay-title-box" id="pdTitoloEbay"></div>
+      <div class="char-count" id="pdCharCount"></div>
+      <button class="btn btn-green" id="btnCopyTitolo" onclick="copiaTitolo()">📋 Copia titolo eBay</button>
+    </div>
+
+    <!-- Testo annuncio -->
+    <div class="card">
+      <div class="card-label">📄 Testo annuncio eBay completo</div>
+      <div class="ebay-text-box" id="pdEbayText"></div>
+      <button class="btn btn-green" id="btnCopyTesto" onclick="copiaTesto()">📋 Copia testo annuncio</button>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- VIEWER -->
+<div id="viewer">
+  <button id="viewer-close" onclick="chiudiViewer()">✕ Chiudi</button>
+  <img id="viewerImg" src="" alt="">
+  <div id="viewer-info"></div>
+  <div id="viewer-hint">👆 Tieni il dito → Salva foto</div>
+  <div id="viewer-nav">
+    <button onclick="navViewer(-1)">◀ Prec</button>
+    <button onclick="navViewer(1)">Succ ▶</button>
+  </div>
+</div>
+
+<script>
+const RF = '1E42B6BF35E24D13B4754DE20BC5634C';
+const EBAY_USER = 'carugno-shop';
+let rfCount = parseInt(localStorage.getItem('rf_count')||'0');
+let prodCorrente = null;
+let viewerIdx = 0;
+
+document.getElementById('rfCount').textContent = rfCount;
+
+// ==================== TABS ====================
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['ebay','amazon'][i]===t));
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+t).classList.add('active');
+}
+
+// ==================== EBAY SPY ====================
+async function caricaEbay() {
+  const btn = document.getElementById('btnAggiorna');
+  btn.disabled = true;
+  document.getElementById('loadEbay').style.display = 'block';
+  document.getElementById('ebayList').innerHTML = '';
+  document.getElementById('ebayEmpty').style.display = 'none';
+  nascondiErr('errEbay');
+
+  try {
+    // Usa Rainforest API per cercare i prodotti del venditore eBay
+    const url = `https://api.rainforestapi.com/request?api_key=${RF}&type=seller_feedback&seller_id=carugno-shop&amazon_domain=amazon.it`;
+    
+    // Alternativa: cerca prodotti recenti tramite ricerca eBay API pubblica
+    // Usiamo l'endpoint di ricerca eBay pubblico
+    const ebayUrl = `https://api.rainforestapi.com/request?api_key=${RF}&type=search&amazon_domain=amazon.it&search_term=site:ebay.it+carugno-shop`;
+
+    // Fallback: mostra istruzioni per copiare titolo manualmente
+    mostraIstruzioniEbay();
+
+  } catch(e) {
+    mostraErr('errEbay', '❌ ' + e.message);
+  } finally {
+    document.getElementById('loadEbay').style.display = 'none';
+    btn.disabled = false;
+  }
+}
+
+function mostraIstruzioniEbay() {
+  document.getElementById('ebayList').innerHTML = `
+    <div class="card" style="text-align:center;padding:20px">
+      <div style="font-size:2rem;margin-bottom:12px">📋</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:10px;color:var(--accent)">Come spiare carugno-shop</div>
+      <div style="color:#ccc;font-size:0.85rem;line-height:1.7;margin-bottom:16px">
+        eBay non permette accesso diretto ai prodotti venduti.<br>
+        Segui questi passi veloci:
+      </div>
+      <div style="text-align:left;background:var(--s2);border-radius:10px;padding:14px;font-size:0.82rem;line-height:1.9;color:#ddd">
+        1️⃣ Vai su eBay → cerca <strong style="color:var(--accent)">carugno-shop</strong><br>
+        2️⃣ Clicca su <strong>Oggetti venduti</strong><br>
+        3️⃣ Copia il titolo del prodotto che ti interessa<br>
+        4️⃣ Vai nella tab <strong style="color:var(--accent)">🔍 Amazon</strong><br>
+        5️⃣ Incolla il titolo e cerca
+      </div>
+      <div style="height:14px"></div>
+      <a href="https://www.ebay.it/usr/carugno-shop" target="_blank" 
+         style="display:block;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:700;padding:13px;border-radius:10px;text-decoration:none;font-size:0.9rem">
+        🔗 Apri carugno-shop su eBay
+      </a>
+    </div>
+
+    <div class="card">
+      <div class="card-label">✏️ Incolla titolo da eBay</div>
+      <div class="input-row">
+        <input type="text" id="ebayTitoloInput" placeholder="Incolla il titolo del prodotto eBay..." />
+        <button class="btn-x" onclick="document.getElementById('ebayTitoloInput').value=''">✕</button>
+      </div>
+      <button class="btn btn-orange" onclick="usaTitoloEbay()">🔍 Cerca su Amazon</button>
+    </div>
+  `;
+}
+
+function usaTitoloEbay() {
+  const t = document.getElementById('ebayTitoloInput').value.trim();
+  if (!t) return;
+  document.getElementById('amzQuery').value = t;
+  switchTab('amazon');
+  cercaAmazon();
+}
+
+// ==================== AMAZON ====================
+function asinDaUrl(url) {
+  const m = url.match(/\/dp\/([A-Z0-9]{10})|\/gp\/product\/([A-Z0-9]{10})/i);
+  return m ? (m[1]||m[2]).toUpperCase() : null;
+}
+
+function generaTitolo(t) {
+  let r = t.replace(/\b[A-Z]{1,3}[0-9]{3,}[A-Z0-9]*\b/g,'').replace(/[,\.\-\|_]+/g,' ').replace(/\s+/g,' ').trim();
+  if (r.length<=80) return r;
+  let s = r.substring(0,80);
+  const u = s.lastIndexOf(' ');
+  if (u>50) s=s.substring(0,u);
+  return s.trim();
+}
+
+async function risolviLink(url) {
+  try {
+    const r = await fetch('https://api.redirectchecker.net/?api=1&url='+encodeURIComponent(url));
+    const d = await r.json();
+    const finale = d?.redirects?.slice(-1)[0]?.url||d?.url||'';
+    const a = asinDaUrl(finale);
+    if (a) return {asin:a};
+  } catch(e){}
+  try {
+    const r = await fetch('https://unshorten.me/json/'+encodeURIComponent(url));
+    const d = await r.json();
+    const a = asinDaUrl(d?.resolved_url||'');
+    if (a) return {asin:a};
+  } catch(e){}
+  // Fallback: passa URL direttamente a Rainforest
+  return {url: url};
+}
+
+async function cercaAmazon() {
+  const q = document.getElementById('amzQuery').value.trim();
+  if (!q) { mostraErr('errAmz','Inserisci un ASIN, titolo o link Amazon.'); return; }
+
+  nascondiErr('errAmz');
+  document.getElementById('amzResultsList').style.display = 'none';
+  document.getElementById('prodDetail').style.display = 'none';
+  document.getElementById('loadAmz').style.display = 'block';
+  document.getElementById('btnAmzSearch').disabled = true;
+
+  let asin = null;
+  let rfUrl = null;
+
+  try {
+    const isLink = q.startsWith('http')||q.startsWith('amzn')||q.includes('amazon.');
+
+    if (isLink) {
+      document.getElementById('loadAmzMsg').textContent = 'Leggo il link…';
+      const url = q.startsWith('http') ? q : 'https://'+q;
+      asin = asinDaUrl(url);
+      if (!asin) {
+        const ris = await risolviLink(url);
+        if (ris.asin) asin = ris.asin;
+        else if (ris.url) rfUrl = `https://api.rainforestapi.com/request?api_key=${RF}&type=product&url=${encodeURIComponent(ris.url)}&amazon_domain=amazon.it`;
+      }
+    }
+
+    if (!asin && !rfUrl) {
+      const m = q.toUpperCase().match(/\b([A-Z][A-Z0-9]{9})\b/);
+      if (m) asin = m[1];
+    }
+
+    if (asin) {
+      // Carica direttamente il prodotto
+      await caricaProdotto(asin, null);
+    } else if (rfUrl) {
+      await caricaProdottoDaUrl(rfUrl);
+    } else {
+      // Ricerca per titolo — mostra lista risultati
+      document.getElementById('loadAmzMsg').textContent = 'Cerco per titolo…';
+      const r = await fetch(`https://api.rainforestapi.com/request?api_key=${RF}&type=search&amazon_domain=amazon.it&search_term=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      if (!r.ok || !d.search_results?.length) throw new Error('Nessun prodotto trovato. Prova con ASIN o link Amazon.');
+      mostraRisultati(d.search_results.slice(0,8));
+    }
+
+  } catch(e) {
+    mostraErr('errAmz','❌ '+e.message);
+  } finally {
+    document.getElementById('loadAmz').style.display = 'none';
+    document.getElementById('btnAmzSearch').disabled = false;
+  }
+}
+
+function mostraRisultati(items) {
+  const cont = document.getElementById('amzResults');
+  cont.innerHTML = '';
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'amz-item';
+    div.innerHTML = `
+      <img class="amz-thumb" src="${item.image||''}" alt="" onerror="this.src=''">
+      <div class="amz-info">
+        <div class="amz-title">${item.title||'—'}</div>
+        <div class="amz-asin">${item.asin||''}</div>
+        ${item.price?.value ? `<div class="amz-price">€${item.price.value.toFixed(2).replace('.',',')}</div>` : ''}
+      </div>
+      <button class="use-btn" onclick="event.stopPropagation();usaAsin('${item.asin}')">Usa</button>
+    `;
+    div.onclick = () => usaAsin(item.asin);
+    cont.appendChild(div);
+  });
+  document.getElementById('amzResultsList').style.display = 'block';
+}
+
+function usaAsin(asin) {
+  document.getElementById('amzResultsList').style.display = 'none';
+  document.getElementById('loadAmz').style.display = 'block';
+  document.getElementById('loadAmzMsg').textContent = 'Carico il prodotto…';
+  caricaProdotto(asin, null).finally(() => {
+    document.getElementById('loadAmz').style.display = 'none';
+  });
+}
+
+function tornaRisultati() {
+  document.getElementById('prodDetail').style.display = 'none';
+  document.getElementById('amzResultsList').style.display = 'block';
+}
+
+async function caricaProdotto(asin, url) {
+  let apiUrl = url || `https://api.rainforestapi.com/request?api_key=${RF}&type=product&asin=${asin}&amazon_domain=amazon.it`;
+  const r = await fetch(apiUrl);
+  const d = await r.json();
+  if (!r.ok || !d.product) throw new Error('Prodotto non trovato.');
+
+  rfCount++;
+  localStorage.setItem('rf_count', rfCount);
+  document.getElementById('rfCount').textContent = rfCount;
+
+  mostraProdotto(d.product);
+}
+
+async function caricaProdottoDaUrl(rfUrl) {
+  const r = await fetch(rfUrl);
+  const d = await r.json();
+  if (!r.ok || !d.product) throw new Error('Prodotto non trovato.');
+  rfCount++;
+  localStorage.setItem('rf_count', rfCount);
+  document.getElementById('rfCount').textContent = rfCount;
+  mostraProdotto(d.product);
+}
+
+function mostraProdotto(p) {
+  const asin = p.asin || '';
+
+  // Descrizione: feature_bullets + description
+  let desc = '';
+  if (p.feature_bullets?.length) desc += p.feature_bullets.join('\n') + '\n\n';
+  if (p.description) desc += p.description.trim() + '\n\n';
+  if (!desc.trim()) desc = 'Descrizione non disponibile.';
+
+  // Prezzo
+  let prezzo = 'N/D';
+  if (p.buybox_winner?.price?.value) prezzo = '€'+p.buybox_winner.price.value.toFixed(2).replace('.',',');
+  else if (p.price?.value) prezzo = '€'+p.price.value.toFixed(2).replace('.',',');
+
+  // Immagini
+  const imgs = [];
+  if (p.main_image?.link) imgs.push(p.main_image.link);
+  if (p.images?.length) p.images.forEach(i=>{if(i.link&&!imgs.includes(i.link))imgs.push(i.link);});
+
+  prodCorrente = { asin, titolo: p.title, prezzo, descrizione: desc.trim(), immagini: imgs, url: p.link };
+
+  // Riempi UI
+  document.getElementById('pdTitle').textContent = p.title||'—';
+  document.getElementById('pdPrice').textContent = prezzo;
+  document.getElementById('pdAsin').textContent = 'ASIN: '+asin;
+  document.getElementById('pdLink').href = p.link||'https://www.amazon.it/dp/'+asin;
+
+  // Immagini grid
+  const grid = document.getElementById('pdImgGrid');
+  grid.innerHTML = '';
+  document.getElementById('pdImgCount').textContent = imgs.length ? '— '+imgs.length+' trovate' : '';
+  if (!imgs.length) {
+    document.getElementById('pdNoImg').style.display = 'block';
+    document.getElementById('btnZip').style.display = 'none';
+  } else {
+    document.getElementById('pdNoImg').style.display = 'none';
+    document.getElementById('btnZip').style.display = 'flex';
+    imgs.forEach((url,i)=>{
+      const div = document.createElement('div');
+      div.className = 'img-wrap';
+      div.onclick = ()=>apriViewer(i);
+      div.innerHTML = `<img src="${url}" alt="img${i+1}" loading="lazy"><span class="img-n">${i+1}</span><div class="img-tap">👆 Tocca per vedere</div>`;
+      grid.appendChild(div);
+    });
+  }
+
+  // Titolo eBay
+  const titEbay = generaTitolo(p.title||'');
+  document.getElementById('pdTitoloEbay').textContent = titEbay;
+  document.getElementById('pdCharCount').textContent = titEbay.length+' / 80 caratteri';
+
+  // Testo annuncio
+  const testo = (p.title||'') + '\n\n* SPEDIZIONE GRATUITA IN TUTTA ITALIA\n* '+asin+'\n\n' + desc.trim();
+  document.getElementById('pdEbayText').textContent = testo;
+
+  document.getElementById('prodDetail').style.display = 'block';
+  setTimeout(()=>document.getElementById('prodDetail').scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+
+// ==================== ZIP ====================
+async function scaricaZip() {
+  if (!prodCorrente?.immagini?.length) return;
+  const btn = document.getElementById('btnZip');
+  btn.disabled = true;
+  try {
+    const zip = new JSZip();
+    const folder = zip.folder('foto');
+    for (let i=0;i<prodCorrente.immagini.length;i++) {
+      btn.textContent = '⏳ '+( i+1)+'/'+prodCorrente.immagini.length+'…';
+      try {
+        const r = await fetch(prodCorrente.immagini[i]);
+        const blob = await r.blob();
+        folder.file('foto-'+(i+1)+'.jpg', blob);
+      } catch(e){}
+    }
+    btn.textContent = '⏳ Creo ZIP…';
+    const blob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='foto-'+prodCorrente.asin+'.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+    btn.textContent = '✅ ZIP scaricato!';
+  } catch(e){ btn.textContent='❌ Errore'; }
+  setTimeout(()=>{btn.textContent='📦 Scarica tutte le foto (ZIP)';btn.disabled=false;},4000);
+}
+
+// ==================== VIEWER ====================
+function apriViewer(i) { viewerIdx=i; aggViewer(); document.getElementById('viewer').classList.add('open'); }
+function aggViewer() {
+  document.getElementById('viewerImg').src = prodCorrente.immagini[viewerIdx];
+  document.getElementById('viewer-info').textContent = (viewerIdx+1)+' di '+prodCorrente.immagini.length;
+}
+function chiudiViewer() { document.getElementById('viewer').classList.remove('open'); }
+function navViewer(d) { viewerIdx=(viewerIdx+d+prodCorrente.immagini.length)%prodCorrente.immagini.length; aggViewer(); }
+
+// ==================== COPY ====================
+function copiaTitolo() {
+  copia(document.getElementById('pdTitoloEbay').textContent, document.getElementById('btnCopyTitolo'), 'Copia titolo eBay');
+}
+function copiaTesto() {
+  copia(document.getElementById('pdEbayText').textContent, document.getElementById('btnCopyTesto'), 'Copia testo annuncio');
+}
+function copia(testo, btn, label) {
+  const ok = ()=>{ btn.textContent='✅ Copiato!'; btn.style.background='#0d2e0d'; btn.style.color='#4caf50'; btn.style.border='1px solid #2e7d2e';
+    setTimeout(()=>{ btn.textContent='📋 '+label; btn.style.background=''; btn.style.color=''; btn.style.border=''; },2500); };
+  if (navigator.clipboard) navigator.clipboard.writeText(testo).then(ok);
+  else { const ta=document.createElement('textarea'); ta.value=testo; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); ok(); }
+}
+
+// ==================== ERRORS ====================
+function mostraErr(id, msg) { const b=document.getElementById(id); b.textContent=msg; b.style.display='block'; }
+function nascondiErr(id) { document.getElementById(id).style.display='none'; }
+
+// ==================== INIT ====================
+document.getElementById('amzQuery').addEventListener('keydown', e=>{ if(e.key==='Enter') cercaAmazon(); });
+document.getElementById('ebayEmpty').style.display = 'block';
+</script>
+</body>
+</html>
