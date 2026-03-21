@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Download Immagini</title>
+<style>
+body{background:#0a0a0a;color:#fff;font-family:Arial;padding:16px}
+.wrap{background:#1a1a1a;border-radius:12px;padding:10px;margin-bottom:16px;border:1px solid #2a2a2a}
+.lbl{font-size:0.75rem;color:#888;margin-bottom:8px;font-weight:700}
+img{width:100%;border-radius:8px;display:block;-webkit-touch-callout:default}
+.hint{font-size:0.82rem;color:#ff9900;margin-top:8px;text-align:center;font-weight:700;line-height:1.5}
+canvas{display:none}
+</style>
+</head>
+<body>
+<h2 style="color:#ff9900;margin-bottom:16px">🧪 Test Salvataggio Immagini</h2>
+<p style="color:#aaa;margin-bottom:16px;font-size:0.85rem">Le immagini qui sotto sono create da Canvas e convertite in &lt;img&gt; con src base64. Tieni premuto per salvare.</p>
+<div id="container"></div>
+<canvas id="testCanvas" width="540" height="540"></canvas>
+
+<script>
+// Crea immagine di test con Canvas
+function creaImmagineTest(titolo, sfondoColore, bannerColore1, bannerColore2, testo) {
+  const canvas = document.getElementById('testCanvas');
+  const ctx = canvas.getContext('2d');
+  const S = 540;
+  
+  // Sfondo bianco
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,S,S);
+  
+  // Titolo
+  ctx.fillStyle = '#000';
+  ctx.font = 'bold 18px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(titolo, S/2, 30);
+  
+  // Rettangolo colorato (simula foto prodotto)
+  ctx.fillStyle = sfondoColore;
+  ctx.fillRect(10, 50, S-20, S-120);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 24px Arial';
+  ctx.fillText('📦 PRODOTTO', S/2, S/2-10);
+  
+  // Banner in basso
+  ctx.fillStyle = bannerColore1;
+  ctx.fillRect(0, S-70, S, 35);
+  ctx.fillStyle = bannerColore2;
+  ctx.fillRect(0, S-35, S, 35);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 20px Arial';
+  ctx.fillText('SPEDIZIONE', S/2, S-48);
+  ctx.fillText('GRATUITA', S/2, S-12);
+  
+  return canvas.toDataURL('image/jpeg', 0.95);
+}
+
+const varianti = [
+  { label:'1. Negozio 1 — Banner blu/rosa', c1:'#1a1a2e', c2:'#4a4a5e', b1:'#003399', b2:'#ff0080' },
+  { label:'2. Negozio 2 — Bandiera italiana', c1:'#1a2e1a', c2:'#2e4a2e', b1:'#009246', b2:'#ce2b37' },
+  { label:'3. Negozio 3 — Bandiera italiana', c1:'#2e1a1a', c2:'#4a2e2e', b1:'#009246', b2:'#ce2b37' },
+  { label:'4. Negozio 4 — Bandiera italiana', c1:'#1a1a2e', c2:'#2e2e4a', b1:'#009246', b2:'#ce2b37' },
+  { label:'5. Negozio 5 — Bandiera italiana', c1:'#2e2e1a', c2:'#4a4a2e', b1:'#009246', b2:'#ce2b37' },
+];
+
+const container = document.getElementById('container');
+
+varianti.forEach((v,i) => {
+  const dataUrl = creaImmagineTest('Test Prodotto eBay '+( i+1), v.c1, v.b1, v.b2, v.label);
+  
+  const wrap = document.createElement('div');
+  wrap.className = 'wrap';
+  
+  const lbl = document.createElement('div');
+  lbl.className = 'lbl';
+  lbl.textContent = v.label;
+  
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.setAttribute('draggable','true');
+  
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  hint.textContent = '👆 Tieni premuto → Scarica immagine';
+  
+  wrap.appendChild(lbl);
+  wrap.appendChild(img);
+  wrap.appendChild(hint);
+  container.appendChild(wrap);
+});
+</script>
+</body>
+</html>
