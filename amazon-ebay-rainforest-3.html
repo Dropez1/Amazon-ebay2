@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Amazon → eBay</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2e2e2e; --accent:#ff9900; --text:#f0f0f0; --muted:#777; --radius:14px; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; padding:20px 16px 80px; }
+  header { text-align:center; margin-bottom:24px; padding-top:8px; }
+  header h1 { font-family:'Syne',sans-serif; font-size:2rem; font-weight:800; }
+  header h1 span { color:var(--accent); }
+  header p { color:var(--muted); font-size:0.85rem; margin-top:6px; }
+  .badge { display:inline-block; background:#0d2e0d; border:1px solid #2e7d2e; color:#4caf50; font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:100px; margin-top:8px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:14px; }
+  .card-label { font-family:'Syne',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
+  input[type=text] { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; color:var(--text); font-size:1rem; font-family:'DM Sans',sans-serif; outline:none; }
+  input:focus { border-color:var(--accent); }
+  input::placeholder { color:var(--muted); }
+  .btn-search { width:100%; margin-top:12px; background:var(--accent); color:#000; border:none; border-radius:10px; padding:15px; font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-search:disabled { opacity:0.45; }
+  #loading { display:none; text-align:center; padding:40px 0; }
+  .spinner { width:42px; height:42px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 14px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #loading p { color:var(--muted); font-size:0.88rem; }
+  #error-box { display:none; background:#1a0d0d; border:1px solid #4a1515; border-radius:var(--radius); padding:14px; color:#ff7070; font-size:0.88rem; margin-bottom:16px; line-height:1.5; }
+  #result { display:none; }
+  .product-title { font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:700; line-height:1.45; margin-bottom:10px; }
+  .price-chip { display:inline-block; background:var(--accent); color:#000; font-family:'Syne',sans-serif; font-weight:800; font-size:1.25rem; padding:4px 14px; border-radius:8px; margin-bottom:8px; }
+  .asin-chip { display:inline-block; background:var(--surface2); border:1px solid var(--border); color:var(--muted); font-size:0.78rem; padding:4px 10px; border-radius:6px; font-family:monospace; margin-left:8px; }
+  .amazon-link { display:inline-flex; align-items:center; gap:5px; margin-top:10px; color:#7eb8ff; font-size:0.82rem; text-decoration:none; border:1px solid #1a3a5e; background:#0a1e2e; padding:7px 12px; border-radius:8px; }
+  .description { color:#ccc; font-size:0.9rem; line-height:1.7; white-space:pre-line; }
+  .counter { background:#1a1a0a; border:1px solid #3a3000; border-radius:10px; padding:10px 14px; font-size:0.8rem; color:#c8a020; margin-bottom:14px; text-align:center; }
+
+  /* IMMAGINI */
+  .images-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .img-wrap { position:relative; background:#111; border-radius:10px; border:1px solid var(--border); aspect-ratio:1; overflow:hidden; }
+  .img-wrap img { width:100%; height:100%; object-fit:contain; padding:8px; display:block; }
+  .img-save {
+    position:absolute; bottom:0; left:0; right:0;
+    background:rgba(255,153,0,0.92);
+    color:#000; font-family:'Syne',sans-serif; font-weight:700; font-size:0.78rem;
+    padding:8px; text-align:center; cursor:pointer; border:none;
+    letter-spacing:0.3px;
+  }
+  .no-images { color:var(--muted); font-size:0.85rem; padding:12px 0; text-align:center; line-height:1.6; }
+  .btn-dl-all { width:100%; margin-top:12px; background:var(--surface2); border:1px solid var(--accent); color:var(--accent); border-radius:10px; padding:13px; font-family:'Syne',sans-serif; font-size:0.9rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .btn-dl-all:disabled { opacity:0.5; }
+
+  /* VIEWER a schermo intero */
+  #viewer { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#000; z-index:999; flex-direction:column; align-items:center; justify-content:center; }
+  #viewer.open { display:flex; }
+  #viewer img { max-width:100%; max-height:80vh; object-fit:contain; }
+  #viewer-hint { color:#fff; font-size:0.85rem; margin-top:16px; opacity:0.7; text-align:center; }
+  #viewer-close { position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.15); border:none; color:#fff; font-size:1.2rem; padding:8px 14px; border-radius:8px; cursor:pointer; }
+  #viewer-nav { display:flex; gap:16px; margin-top:16px; }
+  #viewer-nav button { background:var(--accent); color:#000; border:none; padding:10px 22px; border-radius:8px; font-family:'Syne',sans-serif; font-weight:700; cursor:pointer; font-size:0.9rem; }
+
+  .ebay-text { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; font-size:0.88rem; line-height:1.75; white-space:pre-line; color:#ddd; margin-bottom:12px; min-height:120px; }
+  .btn-copy { width:100%; background:#0d2e0d; border:1px solid #2e7d2e; color:#4caf50; border-radius:10px; padding:13px; font-family:'Syne',sans-serif; font-size:0.9rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; }
+  .btn-copy.done { background:#0a220a; color:#81c784; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Amazon <span>→</span> eBay</h1>
+  <p>Cerca un prodotto e crea il tuo annuncio</p>
+  <span class="badge">✓ 100 ricerche GRATIS al mese</span>
+</header>
+
+<div class="card">
+  <div class="card-label">🔍 Come vuoi cercare?</div>
+  <input type="text" id="query" placeholder="ASIN, nome prodotto, o link Amazon..." />
+  <button class="btn-search" id="searchBtn" onclick="cerca()">🔎 Cerca su Amazon</button>
+</div>
+
+<div class="counter">Ricerche usate: <strong id="usedCount">0</strong> / 100</div>
+
+<div id="loading"><div class="spinner"></div><p id="loadMsg">Ricerca in corso…</p></div>
+<div id="error-box"></div>
+
+<div id="result">
+  <div class="card">
+    <div class="card-label">📦 Prodotto</div>
+    <div class="product-title" id="rTitle"></div>
+    <div><span class="price-chip" id="rPrice"></span><span class="asin-chip" id="rAsin"></span></div>
+    <a class="amazon-link" id="rLink" href="#" target="_blank">🔗 Apri su Amazon</a>
+  </div>
+  <div class="card">
+    <div class="card-label">📝 Descrizione</div>
+    <div class="description" id="rDesc"></div>
+  </div>
+  <div class="card">
+    <div class="card-label">🖼️ Immagini <span id="imgCount" style="color:var(--muted);font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0"></span></div>
+    <div class="images-grid" id="imgGrid"></div>
+    <div class="no-images" id="noImages" style="display:none">Nessuna immagine trovata.</div>
+    <button class="btn-dl-all" id="dlAllBtn" onclick="apriTutte()" style="display:none">🖼️ Apri tutte le immagini</button>
+  </div>
+  <div class="card">
+    <div class="card-label">🏷️ Testo per eBay</div>
+    <div class="ebay-text" id="ebayText"></div>
+    <button class="btn-copy" id="copyBtn" onclick="copia()">📋 Copia testo</button>
+  </div>
+</div>
+
+<!-- VIEWER a schermo intero -->
+<div id="viewer">
+  <button id="viewer-close" onclick="chiudiViewer()">✕ Chiudi</button>
+  <img id="viewer-img" src="" alt="foto" />
+  <p id="viewer-hint">Tieni il dito sull'immagine → Scarica</p>
+  <div id="viewer-nav">
+    <button onclick="navViewer(-1)">◀ Precedente</button>
+    <button onclick="navViewer(1)">Successiva ▶</button>
+  </div>
+</div>
+
+<script>
+const API_KEY = '1E42B6BF35E24D13B4754DE20BC5634C';
+let prodotto = null;
+let viewerIndex = 0;
+let usedCount = parseInt(localStorage.getItem('rf_count') || '0');
+document.getElementById('usedCount').textContent = usedCount;
+
+async function cerca() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) { mostraErr('Inserisci un ASIN, il nome del prodotto o un link Amazon.'); return; }
+  nascondiErr();
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('searchBtn').disabled = true;
+
+  let asin = null;
+
+  try {
+    const isLink = q.startsWith('http') || q.startsWith('amzn') || q.includes('amazon.');
+
+    if (isLink) {
+      document.getElementById('loadMsg').textContent = 'Leggo il link Amazon…';
+      // Prova prima a estrarre ASIN dall'URL
+      const m = q.match(/\/dp\/([A-Z0-9]{10})|\/gp\/product\/([A-Z0-9]{10})/i);
+      if (m) {
+        asin = (m[1] || m[2]).toUpperCase();
+      } else {
+        // Link corto tipo amzn.eu — usa Rainforest con l'URL
+        const r = await fetch(`https://api.rainforestapi.com/request?api_key=${API_KEY}&type=product&url=${encodeURIComponent(q)}&amazon_domain=amazon.it`);
+        const d = await r.json();
+        if (d.product?.asin) asin = d.product.asin;
+        else throw new Error('Link non riconosciuto. Prova a copiare il codice ASIN dalla pagina Amazon.');
+      }
+    }
+
+    if (!asin) {
+      // Cerca ASIN nel testo (con o senza "ASIN" davanti)
+      const m = q.toUpperCase().match(/\b([A-Z0-9]{10})\b/);
+      if (m) asin = m[1];
+    }
+
+    if (!asin) {
+      document.getElementById('loadMsg').textContent = 'Cerco per nome prodotto…';
+      const r = await fetch(`https://api.rainforestapi.com/request?api_key=${API_KEY}&type=search&amazon_domain=amazon.it&search_term=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      if (!r.ok || !d.search_results?.length) throw new Error('Prodotto non trovato. Prova con un ASIN o un link Amazon.');
+      asin = d.search_results[0].asin;
+    }
+
+    document.getElementById('loadMsg').textContent = 'Carico i dettagli…';
+    const r = await fetch(`https://api.rainforestapi.com/request?api_key=${API_KEY}&type=product&asin=${asin}&amazon_domain=amazon.it`);
+    const d = await r.json();
+    if (!r.ok || !d.product) throw new Error('Prodotto non trovato.');
+
+    usedCount++;
+    localStorage.setItem('rf_count', usedCount);
+    document.getElementById('usedCount').textContent = usedCount;
+
+    const p = d.product;
+    let desc = '';
+    if (p.description) desc += p.description + '\n\n';
+    if (p.feature_bullets?.length) desc += p.feature_bullets.join('\n');
+    if (!desc) desc = 'Descrizione non disponibile.';
+
+    const imgs = [];
+    if (p.main_image?.link) imgs.push(p.main_image.link);
+    if (p.images?.length) p.images.forEach(i => { if (i.link && !imgs.includes(i.link)) imgs.push(i.link); });
+
+    let prezzo = 'N/D';
+    if (p.buybox_winner?.price?.value) prezzo = '€' + p.buybox_winner.price.value.toFixed(2).replace('.',',');
+    else if (p.price?.value) prezzo = '€' + p.price.value.toFixed(2).replace('.',',');
+
+    prodotto = { asin, titolo: p.title, prezzo, descrizione: desc.trim(), immagini: imgs, url_amazon: p.link };
+    mostraRisultato(prodotto);
+
+  } catch(e) {
+    mostraErr('❌ ' + e.message);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('searchBtn').disabled = false;
+  }
+}
+
+function mostraRisultato(p) {
+  document.getElementById('rTitle').textContent = p.titolo || '—';
+  document.getElementById('rPrice').textContent = p.prezzo || 'N/D';
+  document.getElementById('rAsin').textContent = 'ASIN: ' + p.asin;
+  document.getElementById('rLink').href = p.url_amazon || 'https://www.amazon.it/dp/' + p.asin;
+  document.getElementById('rDesc').textContent = p.descrizione;
+
+  const grid = document.getElementById('imgGrid');
+  grid.innerHTML = '';
+  const imgs = p.immagini || [];
+  document.getElementById('imgCount').textContent = imgs.length ? '— ' + imgs.length + ' trovate' : '';
+
+  if (!imgs.length) {
+    document.getElementById('noImages').style.display = 'block';
+    document.getElementById('dlAllBtn').style.display = 'none';
+  } else {
+    document.getElementById('noImages').style.display = 'none';
+    document.getElementById('dlAllBtn').style.display = 'flex';
+    imgs.forEach((url, i) => {
+      const div = document.createElement('div');
+      div.className = 'img-wrap';
+      div.innerHTML =
+        '<img src="' + url + '" alt="img ' + (i+1) + '" loading="lazy">' +
+        '<button class="img-save" onclick="apriViewer(' + i + ')">⬇ TIENI PREMUTO PER SALVARE</button>';
+      grid.appendChild(div);
+    });
+  }
+
+  const testo = p.titolo + '\n\nSpedizione gratuita in tutta Italia\n\nCodice ASIN: ' + p.asin + '\n\n' + p.descrizione;
+  document.getElementById('ebayText').textContent = testo;
+  document.getElementById('result').style.display = 'block';
+  setTimeout(() => document.getElementById('result').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+function apriViewer(i) {
+  viewerIndex = i;
+  document.getElementById('viewer-img').src = prodotto.immagini[i];
+  document.getElementById('viewer').classList.add('open');
+}
+
+function chiudiViewer() {
+  document.getElementById('viewer').classList.remove('open');
+}
+
+function navViewer(dir) {
+  viewerIndex = (viewerIndex + dir + prodotto.immagini.length) % prodotto.immagini.length;
+  document.getElementById('viewer-img').src = prodotto.immagini[viewerIndex];
+}
+
+function apriTutte() {
+  // Apre ogni immagine in un nuovo tab — il modo più affidabile su mobile
+  prodotto.immagini.forEach((url, i) => {
+    setTimeout(() => window.open(url, '_blank'), i * 600);
+  });
+}
+
+function copia() {
+  const t = document.getElementById('ebayText').textContent;
+  const btn = document.getElementById('copyBtn');
+  const ok = () => { btn.textContent = '✅ Copiato!'; btn.classList.add('done'); setTimeout(() => { btn.textContent = '📋 Copia testo'; btn.classList.remove('done'); }, 2500); };
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok);
+  else { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); ok(); }
+}
+
+function mostraErr(msg) { const b = document.getElementById('error-box'); b.textContent = msg; b.style.display = 'block'; b.scrollIntoView({ behavior:'smooth' }); }
+function nascondiErr() { document.getElementById('error-box').style.display = 'none'; }
+document.getElementById('query').addEventListener('keydown', e => { if (e.key === 'Enter') cerca(); });
+</script>
+</body>
+</html>
